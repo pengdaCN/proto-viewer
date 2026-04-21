@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proto Debugger</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #1a1a1a;
+        }
+
+        .panel {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .panel-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 5px;
+            color: #555;
+        }
+
+        select, textarea, input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: monospace;
+        }
+
+        select:focus, textarea:focus, input:focus {
+            outline: none;
+            border-color: #4a90d9;
+            box-shadow: 0 0 0 2px rgba(74,144,217,0.2);
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .encoding-switch {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .encoding-btn {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            background: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .encoding-btn.active {
+            background: #4a90d9;
+            color: #fff;
+            border-color: #4a90d9;
+        }
+
+        .btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #4a90d9;
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: #357abd;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: #fff;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-copy {
+            background: #28a745;
+            color: #fff;
+            margin-left: 10px;
+        }
+
+        .btn-copy:hover {
+            background: #218838;
+        }
+
+        .btn-sm {
+            padding: 4px 12px;
+            font-size: 12px;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: #fff;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .result-section {
+            margin-top: 20px;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .result-actions {
+            display: flex;
+            align-items: center;
+        }
+
+        .error {
+            color: #dc3545;
+            padding: 15px;
+            background: #f8d7da;
+            border-radius: 4px;
+            border: 1px solid #f5c6cb;
+        }
+
+        .success {
+            color: #155724;
+            padding: 15px;
+            background: #d4edda;
+            border-radius: 4px;
+            border: 1px solid #c3e6cb;
+        }
+
+        .info {
+            color: #004085;
+            padding: 15px;
+            background: #cce5ff;
+            border-radius: 4px;
+            border: 1px solid #b8daff;
+        }
+
+        .warning {
+            color: #856404;
+            background: #fff3cd;
+            border: 1px solid #ffeeba;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+
+        pre {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            overflow-x: auto;
+            font-family: monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .proto-list {
+            margin-top: 10px;
+        }
+
+        .proto-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            margin-bottom: 5px;
+        }
+
+        .proto-item-name {
+            font-family: monospace;
+            font-size: 13px;
+        }
+
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .upload-area:hover {
+            border-color: #4a90d9;
+            background: #f8f9ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #4a90d9;
+            background: #e8f0ff;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            color: #ccc;
+            margin-bottom: 10px;
+        }
+
+        .upload-text {
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .upload-hint {
+            color: #999;
+            font-size: 12px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .two-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .two-columns {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .json-tree {
+            font-family: monospace;
+            font-size: 13px;
+        }
+
+        .json-toggle {
+            cursor: pointer;
+            user-select: none;
+            padding-left: 16px;
+            position: relative;
+        }
+
+        .json-toggle::before {
+            content: '';
+            position: absolute;
+            left: 4px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: 4px solid transparent;
+            border-left-color: #666;
+            margin-top: -2px;
+        }
+
+        .json-toggle.collapsed::before {
+            border-left-color: transparent;
+            border-top-color: #666;
+            margin-top: 2px;
+            left: 0;
+        }
+
+        .json-key {
+            color: #0066cc;
+        }
+
+        .json-string {
+            color: #c7254e;
+        }
+
+        .json-number {
+            color: #009999;
+        }
+
+        .json-boolean {
+            color: #b85c00;
+        }
+
+        .json-null {
+            color: #888;
+        }
+
+        .json-collapsed {
+            opacity: 0.7;
+        }
+
+        .json-item {
+            padding-left: 16px;
+        }
+
+        pre.json-tree {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            overflow-x: auto;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Proto Debugger</h1>
+
+        <div class="two-columns">
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title">上传 Proto 文件</span>
+                </div>
+
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">点击或拖拽 .proto 文件到此处</div>
+                    <div class="upload-hint">支持多个文件</div>
+                    <input type="file" id="fileInput" accept=".proto" multiple>
+                </div>
+
+                <div id="uploadStatus"></div>
+
+                <div class="panel-header" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;">
+                    <span class="panel-title">上传 Proto 目录</span>
+                </div>
+
+                <div class="upload-area" id="directoryUploadArea">
+                    <div class="upload-icon">📂</div>
+                    <div class="upload-text">点击选择包含 .proto 文件的文件夹</div>
+                    <div class="upload-hint">支持目录上传，自动解析 import 依赖</div>
+                    <input type="file" id="directoryInput" webkitdirectory multiple>
+                </div>
+
+                <div id="directoryUploadStatus"></div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title">已加载的 Proto 类型</span>
+                    <button class="btn btn-sm btn-secondary" id="refreshBtn">刷新</button>
+                </div>
+
+                <div id="protoList" class="proto-list">
+                    <div class="loading">暂无已加载的类型</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <span class="panel-title">解码</span>
+            </div>
+
+            <div id="protocWarning" class="warning" style="display: none;">
+                ⚠️ <strong>protoc 未安装</strong> - 请先安装 protoc 以使用解码功能<br>
+                <a href="https://github.com/protocolbuffers/protobuf/releases" target="_blank">下载地址</a>
+            </div>
+
+            <div class="form-group">
+                <label for="protoType">Proto 类型</label>
+                <select id="protoType">
+                    <option value="">-- 选择 Proto 类型 --</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="binaryInput">二进制数据</label>
+                <div class="encoding-switch">
+                    <button type="button" class="encoding-btn active" data-encoding="hex">HEX</button>
+                    <button type="button" class="encoding-btn" data-encoding="base64">Base64</button>
+                </div>
+                <textarea id="binaryInput" placeholder="输入 hex 或 base64 编码的二进制数据..."></textarea>
+            </div>
+
+            <button type="button" class="btn btn-primary" id="decodeBtn">解码</button>
+        </div>
+
+        <div class="panel" id="resultSection" style="display: none;">
+            <div class="result-header">
+                <label>JSON 结果</label>
+                <div class="result-actions">
+                    <button type="button" class="btn btn-copy" id="copyBtn">复制</button>
+                </div>
+            </div>
+            <pre id="jsonResult"></pre>
+        </div>
+
+        <div class="panel" id="errorSection" style="display: none;">
+            <div class="error" id="errorMessage"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentEncoding = 'hex';
+        let hasProtoc = true;
+
+        async function loadProtoTypes() {
+            try {
+                const response = await fetch('/api/proto/types');
+                const data = await response.json();
+
+                const select = document.getElementById('protoType');
+                select.innerHTML = '<option value="">-- 选择 Proto 类型 --</option>';
+
+                const listDiv = document.getElementById('protoList');
+
+                if (data.types && data.types.length > 0) {
+                    data.types.forEach(type => {
+                        const option = document.createElement('option');
+                        option.value = type;
+                        option.textContent = type;
+                        select.appendChild(option);
+                    });
+
+                    listDiv.innerHTML = data.types.map(type => `
+                        <div class="proto-item">
+                            <span class="proto-item-name">${type}</span>
+                            <button class="btn btn-sm btn-danger" onclick="deleteType('${type}')">删除</button>
+                        </div>
+                    `).join('');
+                } else {
+                    listDiv.innerHTML = '<div class="loading">暂无已加载的类型，请上传 .proto 文件</div>';
+                }
+            } catch (error) {
+                console.error('加载 proto 类型失败:', error);
+            }
+        }
+
+        async function checkProtoc() {
+            try {
+                const response = await fetch('/api/proto/types');
+                hasProtoc = true;
+                document.getElementById('protocWarning').style.display = 'none';
+            } catch (error) {
+                hasProtoc = false;
+                document.getElementById('protocWarning').style.display = 'block';
+            }
+        }
+
+        document.getElementById('uploadArea').addEventListener('click', function() {
+            document.getElementById('fileInput').click();
+        });
+
+        document.getElementById('uploadArea').addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.classList.add('dragover');
+        });
+
+        document.getElementById('uploadArea').addEventListener('dragleave', function() {
+            this.classList.remove('dragover');
+        });
+
+        document.getElementById('uploadArea').addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            handleFiles(files);
+        });
+
+        document.getElementById('fileInput').addEventListener('change', function() {
+            handleFiles(this.files);
+        });
+
+        document.getElementById('directoryUploadArea').addEventListener('click', function() {
+            document.getElementById('directoryInput').click();
+        });
+
+        document.getElementById('directoryInput').addEventListener('change', function() {
+            handleDirectory(this.files);
+        });
+
+        async function handleDirectory(files) {
+            if (files.length === 0) return;
+
+            const statusDiv = document.getElementById('directoryUploadStatus');
+            statusDiv.innerHTML = '<div class="loading">正在处理目录...</div>';
+
+            try {
+                const protoFiles = Array.from(files).filter(f => f.name.endsWith('.proto'));
+                if (protoFiles.length === 0) {
+                    statusDiv.innerHTML = '<div class="error">目录中没有找到 .proto 文件</div>';
+                    return;
+                }
+
+                const tarData = await createTarFromFiles(protoFiles);
+
+                const response = await fetch('/api/proto/upload-directory', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/octet-stream'
+                    },
+                    body: tarData
+                });
+
+                const result = await response.json();
+
+                if (result.error) {
+                    statusDiv.innerHTML = `<div class="error">上传失败: ${result.error}</div>`;
+                } else {
+                    statusDiv.innerHTML = `<div class="success">目录上传成功！加载了 ${result.types.length} 个类型</div>`;
+                    loadProtoTypes();
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="error">上传失败: ${error.message}</div>`;
+            }
+        }
+
+        async function createTarFromFiles(files) {
+            const TAR_BLOCK_SIZE = 512;
+            const allBytes = [];
+
+            const paths = Array.from(files).map(f => (f.webkitRelativePath || f.name).replace(/^\//, '').replace(/\\/g, '/'));
+
+            let commonPrefix = paths[0] || '';
+            for (const path of paths) {
+                while (commonPrefix.length > 0 && !path.startsWith(commonPrefix)) {
+                    const lastSlash = commonPrefix.lastIndexOf('/');
+                    if (lastSlash < 0) {
+                        commonPrefix = '';
+                        break;
+                    }
+                    commonPrefix = commonPrefix.substring(0, lastSlash);
+                }
+            }
+            if (commonPrefix.endsWith('/')) {
+                commonPrefix = commonPrefix.substring(0, commonPrefix.length - 1);
+            }
+            const prefixToStrip = commonPrefix ? commonPrefix + '/' : '';
+
+            for (const file of files) {
+                let pathStr = (file.webkitRelativePath || file.name).replace(/^\//, '').replace(/\\/g, '/');
+                if (prefixToStrip && pathStr.startsWith(prefixToStrip)) {
+                    pathStr = pathStr.substring(prefixToStrip.length);
+                }
+
+                const content = await file.arrayBuffer();
+                const contentArray = new Uint8Array(content);
+                const fileSize = contentArray.length;
+
+                const header = new Uint8Array(TAR_BLOCK_SIZE);
+                const pathBytes = new TextEncoder().encode(pathStr);
+                for (let i = 0; i < 100 && i < pathBytes.length; i++) {
+                    header[i] = pathBytes[i];
+                }
+
+                const modeBytes = new TextEncoder().encode('100644');
+                for (let i = 0; i < 8; i++) header[100 + i] = modeBytes[i] || 0;
+
+                const sizeStr = fileSize.toString(8).padStart(11, ' ');
+                const sizeBytes = new TextEncoder().encode(sizeStr);
+                for (let i = 0; i < 12; i++) header[124 + i] = sizeBytes[i] || 0;
+
+                const mtime = Math.floor(Date.now() / 1000).toString(8).padStart(11, ' ');
+                const mtimeBytes = new TextEncoder().encode(mtime);
+                for (let i = 0; i < 12; i++) header[136 + i] = mtimeBytes[i] || 0;
+
+                header[156] = 0;
+
+                let sum = 0;
+                for (let i = 0; i < 148; i++) sum += header[i];
+                sum += 32 * 8;
+                for (let i = 156; i < 512; i++) sum += header[i];
+
+                const checksumStr = sum.toString(8).padStart(6, ' ') + ' ';
+                const checksumBytes = new TextEncoder().encode(checksumStr);
+                for (let i = 0; i < 8; i++) header[148 + i] = checksumBytes[i] || 0;
+
+                for (let i = 0; i < TAR_BLOCK_SIZE; i++) {
+                    allBytes.push(header[i]);
+                }
+
+                for (let i = 0; i < contentArray.length; i++) {
+                    allBytes.push(contentArray[i]);
+                }
+
+                const remainder = fileSize % 512;
+                if (remainder !== 0) {
+                    for (let i = 0; i < 512 - remainder; i++) {
+                        allBytes.push(0);
+                    }
+                }
+            }
+
+            for (let i = 0; i < 1024; i++) {
+                allBytes.push(0);
+            }
+
+            return new Blob([new Uint8Array(allBytes)], { type: 'application/octet-stream' });
+        }
+
+        async function handleFiles(files) {
+            const statusDiv = document.getElementById('uploadStatus');
+            statusDiv.innerHTML = '<div class="loading">正在上传和编译...</div>';
+
+            for (const file of files) {
+                const content = await file.text();
+                const fileName = file.name;
+
+                try {
+                    const response = await fetch('/api/proto/upload', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/octet-stream',
+                            'X-Proto-Name': fileName
+                        },
+                        body: content
+                    });
+
+                    const result = await response.json();
+
+                    if (result.error) {
+                        statusDiv.innerHTML = `<div class="error">${fileName}: ${result.error}</div>`;
+                    } else {
+                        statusDiv.innerHTML = `<div class="success">${fileName} 上传成功！加载了 ${result.types.length} 个类型</div>`;
+                    }
+                } catch (error) {
+                    statusDiv.innerHTML = `<div class="error">${fileName}: 上传失败 - ${error.message}</div>`;
+                }
+            }
+
+            loadProtoTypes();
+        }
+
+        async function deleteType(typeName) {
+            if (!confirm(`确定要删除类型 ${typeName} 吗？`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/proto/types/${encodeURIComponent(typeName)}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    loadProtoTypes();
+                } else {
+                    alert('删除失败');
+                }
+            } catch (error) {
+                alert('删除失败: ' + error.message);
+            }
+        }
+
+        document.getElementById('refreshBtn').addEventListener('click', function() {
+            loadProtoTypes();
+        });
+
+        document.querySelectorAll('.encoding-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.encoding-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentEncoding = this.dataset.encoding;
+            });
+        });
+
+        document.getElementById('decodeBtn').addEventListener('click', async function() {
+            const type = document.getElementById('protoType').value;
+            const data = document.getElementById('binaryInput').value.trim();
+
+            document.getElementById('resultSection').style.display = 'none';
+            document.getElementById('errorSection').style.display = 'none';
+
+            if (!type) {
+                showError('请选择 proto 类型');
+                return;
+            }
+
+            if (!data) {
+                showError('请输入二进制数据');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/proto/decode', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        data: data,
+                        type: type,
+                        encoding: currentEncoding
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.error) {
+                    showError(result.error);
+                } else {
+                    document.getElementById('jsonResult').innerHTML = renderJsonTree(JSON.parse(result.json));
+                    document.getElementById('resultSection').style.display = 'block';
+                }
+            } catch (error) {
+                showError('请求失败: ' + error.message);
+            }
+        });
+
+        document.getElementById('copyBtn').addEventListener('click', async function() {
+            const jsonText = document.getElementById('jsonResult').textContent;
+            try {
+                await navigator.clipboard.writeText(jsonText);
+                this.textContent = '已复制!';
+                setTimeout(() => {
+                    this.textContent = '复制';
+                }, 2000);
+            } catch (error) {
+                showError('复制失败: ' + error.message);
+            }
+        });
+
+        function showError(message) {
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('errorSection').style.display = 'block';
+        }
+
+        function renderJsonTree(obj, key = null, depth = 0) {
+            if (obj === null) {
+                return `<span class="json-null">null</span>`;
+            }
+            if (typeof obj === 'boolean') {
+                return `<span class="json-boolean">${obj}</span>`;
+            }
+            if (typeof obj === 'number') {
+                return `<span class="json-number">${obj}</span>`;
+            }
+            if (typeof obj === 'string') {
+                return `<span class="json-string">"${escapeHtml(obj)}"</span>`;
+            }
+
+            if (Array.isArray(obj)) {
+                if (obj.length === 0) {
+                    return '<span class="json-null">[]</span>';
+                }
+                const items = obj.map((item, i) => {
+                    return `<div class="json-item">${renderJsonTree(item, i, depth + 1)}</div>`;
+                }).join('');
+                const collapsed = depth > 2 ? 'json-collapsed' : '';
+                return `<span class="json-toggle ${collapsed}" onclick="toggleCollapse(this)"></span><span class="json-bracket">[</span><div class="json-children">${items}</div><span class="json-bracket">]</span>`;
+            }
+
+            if (typeof obj === 'object') {
+                const keys = Object.keys(obj);
+                if (keys.length === 0) {
+                    return '<span class="json-null">{}</span>';
+                }
+                const items = keys.map(k => {
+                    const value = renderJsonTree(obj[k], k, depth + 1);
+                    return `<div class="json-item"><span class="json-key">"${escapeHtml(k)}"</span>: ${value}</div>`;
+                }).join('');
+                const collapsed = depth > 2 ? 'json-collapsed' : '';
+                return `<span class="json-toggle ${collapsed}" onclick="toggleCollapse(this)"></span><span class="json-bracket">{</span><div class="json-children">${items}</div><span class="json-bracket">}</span>`;
+            }
+
+            return String(obj);
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function toggleCollapse(element) {
+            element.classList.toggle('collapsed');
+            const children = element.nextElementSibling.nextElementSibling;
+            if (children) {
+                children.style.display = element.classList.contains('collapsed') ? 'none' : 'block';
+            }
+        }
+
+        checkProtoc();
+        loadProtoTypes();
+    </script>
+</body>
+</html>
