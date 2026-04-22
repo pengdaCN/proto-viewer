@@ -486,8 +486,20 @@ type PaginatedTypes struct {
 	TotalPages int
 }
 
-func (p *ProtoRegistry) GetLoadedTypesPaginated(page, pageSize int) (*PaginatedTypes, error) {
+func (p *ProtoRegistry) GetLoadedTypesPaginated(page, pageSize int, search string) (*PaginatedTypes, error) {
 	allTypes := p.GetLoadedTypes()
+
+	if search != "" {
+		lowerSearch := strings.ToLower(search)
+		filtered := []string{}
+		for _, t := range allTypes {
+			if strings.Contains(strings.ToLower(t), lowerSearch) {
+				filtered = append(filtered, t)
+			}
+		}
+		allTypes = filtered
+	}
+
 	total := len(allTypes)
 
 	if total == 0 {
@@ -616,7 +628,14 @@ func (p *ProtoRegistry) Decode(data []byte, typeName string) (string, error) {
 	dynMsg := dynamicpb.NewMessage(msgType.Descriptor())
 
 	if err := proto.Unmarshal(data, dynMsg); err != nil {
-		return "", fmt.Errorf("反序列化失败: %v", err)
+		if len(data) > 5 {
+			dynMsg = dynamicpb.NewMessage(msgType.Descriptor())
+			if err2 := proto.Unmarshal(data[5:], dynMsg); err2 != nil {
+				return "", fmt.Errorf("反序列化失败: %v (原始数据) -> %v (grpc-web帧)", err, err2)
+			}
+		} else {
+			return "", fmt.Errorf("反序列化失败: %v", err)
+		}
 	}
 
 	jsonBytes, err := protojson.MarshalOptions{

@@ -240,6 +240,8 @@
 
         .proto-list {
             margin-top: 10px;
+            max-height: 300px;
+            overflow-y: auto;
         }
 
         .proto-item {
@@ -375,6 +377,61 @@
             max-height: 500px;
             overflow-y: auto;
         }
+
+        .combobox-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .combobox-wrapper input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: monospace;
+        }
+
+        .combobox-wrapper input:focus {
+            outline: none;
+            border-color: #4a90d9;
+            box-shadow: 0 0 0 2px rgba(74,144,217,0.2);
+        }
+
+        .combobox-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            max-height: 200px;
+            overflow-y: auto;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: none;
+        }
+
+        .combobox-dropdown.show {
+            display: block;
+        }
+
+        .combobox-dropdown .combobox-option {
+            padding: 10px 12px;
+            cursor: pointer;
+            font-family: monospace;
+            font-size: 13px;
+        }
+
+        .combobox-dropdown .combobox-option:hover,
+        .combobox-dropdown .combobox-option.highlighted {
+            background: #f0f0f0;
+        }
+
+        .combobox-dropdown .combobox-option.selected {
+            background: #e8f0ff;
+        }
     </style>
 </head>
 <body>
@@ -388,26 +445,15 @@
                 </div>
 
                 <div class="upload-area" id="uploadArea">
-                    <div class="upload-icon">📁</div>
-                    <div class="upload-text">点击或拖拽 .proto 文件到此处</div>
-                    <div class="upload-hint">支持多个文件</div>
-                    <input type="file" id="fileInput" accept=".proto" multiple>
+                    <div class="upload-icon">📂</div>
+                    <div class="upload-text">点击或拖拽 .proto 文件或文件夹到此处</div>
+                    <div class="upload-hint">支持文件和文件夹上传</div>
+                    <input type="file" id="fileInput" accept=".proto" multiple webkitdirectory>
                 </div>
 
                 <div id="uploadStatus"></div>
 
-                <div class="panel-header" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;">
-                    <span class="panel-title">上传 Proto 目录</span>
-                </div>
-
-                <div class="upload-area" id="directoryUploadArea">
-                    <div class="upload-icon">📂</div>
-                    <div class="upload-text">点击选择包含 .proto 文件的文件夹</div>
-                    <div class="upload-hint">支持目录上传，自动解析 import 依赖</div>
-                    <input type="file" id="directoryInput" webkitdirectory multiple>
-                </div>
-
-                <div id="directoryUploadStatus"></div>
+                
             </div>
 
             <div class="panel">
@@ -420,7 +466,7 @@
                     <div class="loading">暂无已加载的类型</div>
                 </div>
 
-                <div class="pagination-controls" id="paginationControls" style="display: none; margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
+                <div class="pagination-controls" id="paginationControls" style="display: none; margin-top: 15px;">
                     <button type="button" class="btn btn-sm btn-secondary" id="prevPageBtn" disabled>上一页</button>
                     <span id="pageInfo">第 1/1 页，每页 50 条</span>
                     <button type="button" class="btn btn-sm btn-secondary" id="nextPageBtn" disabled>下一页</button>
@@ -440,9 +486,10 @@
 
             <div class="form-group">
                 <label for="protoType">Proto 类型</label>
-                <select id="protoType">
-                    <option value="">-- 选择 Proto 类型 --</option>
-                </select>
+                <div class="combobox-wrapper">
+                    <input type="text" id="protoType" placeholder="选择或搜索 Proto 类型..." autocomplete="off">
+                    <div class="combobox-dropdown" id="protoTypeDropdown"></div>
+                </div>
             </div>
 
             <div class="form-group">
@@ -477,32 +524,32 @@
         let hasProtoc = true;
         let paginationState = {
             page: 1,
-            pageSize: 50,
+            pageSize: 10,
             total: 0,
             totalPages: 0
         };
 
-        async function loadProtoTypes(page = 1) {
+        async function loadProtoTypes(page = 1, search = '') {
             try {
-                const response = await fetch(`/api/proto/types?page=${page}&pageSize=${paginationState.pageSize}`);
+                const url = `/api/proto/types?page=${page}&pageSize=${paginationState.pageSize}${search ? '&search=' + encodeURIComponent(search) : ''}`;
+                const response = await fetch(url);
                 const data = await response.json();
 
                 paginationState.page = data.page || 1;
                 paginationState.total = data.total || 0;
                 paginationState.totalPages = data.totalPages || 0;
 
-                const select = document.getElementById('protoType');
-                select.innerHTML = '<option value="">-- 选择 Proto 类型 --</option>';
-
+                const input = document.getElementById('protoType');
+                const dropdown = document.getElementById('protoTypeDropdown');
                 const listDiv = document.getElementById('protoList');
 
                 if (data.types && data.types.length > 0) {
-                    data.types.forEach(type => {
-                        const option = document.createElement('option');
-                        option.value = type;
-                        option.textContent = type;
-                        select.appendChild(option);
-                    });
+                    if (search) {
+                        dropdown.innerHTML = data.types.map(type => `
+                            <div class="combobox-option" data-value="${type}">${type}</div>
+                        `).join('');
+                        dropdown.classList.add('show');
+                    }
 
                     listDiv.innerHTML = data.types.map(type => `
                         <div class="proto-item">
@@ -511,6 +558,7 @@
                         </div>
                     `).join('');
                 } else {
+                    dropdown.classList.remove('show');
                     listDiv.innerHTML = '<div class="loading">暂无已加载的类型，请上传 .proto 文件</div>';
                 }
 
@@ -519,6 +567,95 @@
                 console.error('加载 proto 类型失败:', error);
             }
         }
+
+        let allTypes = [];
+        let comboboxHighlightIndex = -1;
+        let searchDebounceTimer = null;
+
+        function initCombobox() {
+            const input = document.getElementById('protoType');
+            const dropdown = document.getElementById('protoTypeDropdown');
+
+            input.addEventListener('input', function(e) {
+                const searchText = e.target.value.trim();
+                clearTimeout(searchDebounceTimer);
+                if (searchText) {
+                    searchDebounceTimer = setTimeout(() => {
+                        loadProtoTypes(1, searchText);
+                    }, 300);
+                } else {
+                    dropdown.classList.remove('show');
+                    loadProtoTypes(1, '');
+                }
+            });
+
+            input.addEventListener('focus', function() {
+                if (allTypes.length > 0) {
+                    dropdown.innerHTML = allTypes.map((type, i) => `
+                        <div class="combobox-option ${i === comboboxHighlightIndex ? 'highlighted' : ''}" data-value="${type}">${type}</div>
+                    `).join('');
+                    dropdown.classList.add('show');
+                }
+            });
+
+            input.addEventListener('keydown', function(e) {
+                const options = dropdown.querySelectorAll('.combobox-option');
+                if (!dropdown.classList.contains('show') || options.length === 0) return;
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    comboboxHighlightIndex = Math.min(comboboxHighlightIndex + 1, options.length - 1);
+                    updateHighlight(options, comboboxHighlightIndex);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    comboboxHighlightIndex = Math.max(comboboxHighlightIndex - 1, 0);
+                    updateHighlight(options, comboboxHighlightIndex);
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (comboboxHighlightIndex >= 0 && options[comboboxHighlightIndex]) {
+                        selectOption(options[comboboxHighlightIndex].dataset.value);
+                    }
+                } else if (e.key === 'Escape') {
+                    dropdown.classList.remove('show');
+                    comboboxHighlightIndex = -1;
+                }
+            });
+
+            dropdown.addEventListener('click', function(e) {
+                if (e.target.classList.contains('combobox-option')) {
+                    selectOption(e.target.dataset.value);
+                }
+            });
+
+            dropdown.addEventListener('mouseover', function(e) {
+                if (e.target.classList.contains('combobox-option')) {
+                    const options = dropdown.querySelectorAll('.combobox-option');
+                    options.forEach(opt => opt.classList.remove('highlighted'));
+                    e.target.classList.add('highlighted');
+                }
+            });
+        }
+
+        function updateHighlight(options, index) {
+            options.forEach((opt, i) => {
+                opt.classList.toggle('highlighted', i === index);
+            });
+        }
+
+        function selectOption(value) {
+            const input = document.getElementById('protoType');
+            const dropdown = document.getElementById('protoTypeDropdown');
+            input.value = value;
+            dropdown.classList.remove('show');
+            comboboxHighlightIndex = -1;
+            input.dispatchEvent(new Event('change'));
+        }
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.combobox-wrapper')) {
+                document.getElementById('protoTypeDropdown').classList.remove('show');
+            }
+        });
 
         function updatePaginationControls() {
             const controls = document.getElementById('paginationControls');
@@ -577,49 +714,7 @@
             handleFiles(this.files);
         });
 
-        document.getElementById('directoryUploadArea').addEventListener('click', function() {
-            document.getElementById('directoryInput').click();
-        });
-
-        document.getElementById('directoryInput').addEventListener('change', function() {
-            handleDirectory(this.files);
-        });
-
-        async function handleDirectory(files) {
-            if (files.length === 0) return;
-
-            const statusDiv = document.getElementById('directoryUploadStatus');
-            statusDiv.innerHTML = '<div class="loading">正在处理目录...</div>';
-
-            try {
-                const protoFiles = Array.from(files).filter(f => f.name.endsWith('.proto'));
-                if (protoFiles.length === 0) {
-                    statusDiv.innerHTML = '<div class="error">目录中没有找到 .proto 文件</div>';
-                    return;
-                }
-
-                const tarData = await createTarFromFiles(protoFiles);
-
-                const response = await fetch('/api/proto/upload-directory', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/octet-stream'
-                    },
-                    body: tarData
-                });
-
-                const result = await response.json();
-
-                if (result.error) {
-                    statusDiv.innerHTML = `<div class="error">上传失败: ${result.error}</div>`;
-                } else {
-                    statusDiv.innerHTML = `<div class="success">目录上传成功！加载了 ${result.types.length} 个类型</div>`;
-                    loadProtoTypes(1);
-                }
-            } catch (error) {
-                statusDiv.innerHTML = `<div class="error">上传失败: ${error.message}</div>`;
-            }
-        }
+        
 
         async function createTarFromFiles(files) {
             const TAR_BLOCK_SIZE = 512;
@@ -706,35 +801,59 @@
 
         async function handleFiles(files) {
             const statusDiv = document.getElementById('uploadStatus');
-            statusDiv.innerHTML = '<div class="loading">正在上传和编译...</div>';
 
-            for (const file of files) {
-                const content = await file.text();
-                const fileName = file.name;
+            const hasDirectory = Array.from(files).some(f => f.webkitRelativePath);
 
+            if (hasDirectory) {
+                statusDiv.innerHTML = '<div class="loading">正在处理目录...</div>';
+                const protoFiles = Array.from(files).filter(f => f.name.endsWith('.proto'));
+                if (protoFiles.length === 0) {
+                    statusDiv.innerHTML = '<div class="error">目录中没有找到 .proto 文件</div>';
+                    return;
+                }
+                const tarData = await createTarFromFiles(protoFiles);
                 try {
-                    const response = await fetch('/api/proto/upload', {
+                    const response = await fetch('/api/proto/upload-directory', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/octet-stream',
-                            'X-Proto-Name': fileName
-                        },
-                        body: content
+                        headers: { 'Content-Type': 'application/octet-stream' },
+                        body: tarData
                     });
-
                     const result = await response.json();
-
                     if (result.error) {
-                        statusDiv.innerHTML = `<div class="error">${fileName}: ${result.error}</div>`;
+                        statusDiv.innerHTML = `<div class="error">上传失败: ${result.error}</div>`;
                     } else {
-                        statusDiv.innerHTML = `<div class="success">${fileName} 上传成功！加载了 ${result.types.length} 个类型</div>`;
+                        statusDiv.innerHTML = `<div class="success">目录上传成功！加载了 ${result.types.length} 个类型</div>`;
+                        loadProtoTypes(1);
                     }
                 } catch (error) {
-                    statusDiv.innerHTML = `<div class="error">${fileName}: 上传失败 - ${error.message}</div>`;
+                    statusDiv.innerHTML = `<div class="error">上传失败: ${error.message}</div>`;
                 }
+            } else {
+                statusDiv.innerHTML = '<div class="loading">正在上传和编译...</div>';
+                for (const file of files) {
+                    const content = await file.text();
+                    const fileName = file.name;
+                    try {
+                        const response = await fetch('/api/proto/upload', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/octet-stream',
+                                'X-Proto-Name': fileName
+                            },
+                            body: content
+                        });
+                        const result = await response.json();
+                        if (result.error) {
+                            statusDiv.innerHTML = `<div class="error">${fileName}: ${result.error}</div>`;
+                        } else {
+                            statusDiv.innerHTML = `<div class="success">${fileName} 上传成功！加载了 ${result.types.length} 个类型</div>`;
+                        }
+                    } catch (error) {
+                        statusDiv.innerHTML = `<div class="error">${fileName}: 上传失败 - ${error.message}</div>`;
+                    }
+                }
+                loadProtoTypes(1);
             }
-
-            loadProtoTypes(1);
         }
 
         async function deleteType(typeName) {
@@ -898,6 +1017,7 @@
         }
 
         checkProtoc();
+        initCombobox();
         loadProtoTypes(1);
     </script>
 </body>

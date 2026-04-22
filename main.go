@@ -69,7 +69,8 @@ type ProtoTypesResponse struct {
 
 func handleProtoTypes(w http.ResponseWriter, r *http.Request) {
 	page := 1
-	pageSize := 50
+	pageSize := 10
+	search := ""
 
 	if p := r.URL.Query().Get("page"); p != "" {
 		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
@@ -81,8 +82,11 @@ func handleProtoTypes(w http.ResponseWriter, r *http.Request) {
 			pageSize = parsed
 		}
 	}
+	if s := r.URL.Query().Get("search"); s != "" {
+		search = s
+	}
 
-	result, err := protoRegistry.GetLoadedTypesPaginated(page, pageSize)
+	result, err := protoRegistry.GetLoadedTypesPaginated(page, pageSize, search)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
