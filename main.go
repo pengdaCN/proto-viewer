@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 )
 
 //go:embed embed/*
@@ -59,12 +60,42 @@ func main() {
 }
 
 type ProtoTypesResponse struct {
-	Types []string `json:"types"`
+	Types      []string `json:"types"`
+	Total      int      `json:"total"`
+	Page       int      `json:"page"`
+	PageSize   int      `json:"pageSize"`
+	TotalPages int      `json:"totalPages"`
 }
 
 func handleProtoTypes(w http.ResponseWriter, r *http.Request) {
-	types := protoRegistry.GetLoadedTypes()
-	resp := ProtoTypesResponse{Types: types}
+	page := 1
+	pageSize := 50
+
+	if p := r.URL.Query().Get("page"); p != "" {
+		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
+			page = parsed
+		}
+	}
+	if ps := r.URL.Query().Get("pageSize"); ps != "" {
+		if parsed, err := strconv.Atoi(ps); err == nil && parsed > 0 {
+			pageSize = parsed
+		}
+	}
+
+	result, err := protoRegistry.GetLoadedTypesPaginated(page, pageSize)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+
+	resp := ProtoTypesResponse{
+		Types:      result.Types,
+		Total:      result.Total,
+		Page:       result.Page,
+		PageSize:   result.PageSize,
+		TotalPages: result.TotalPages,
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 }

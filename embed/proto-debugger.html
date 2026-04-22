@@ -157,6 +157,20 @@
             background: #c82333;
         }
 
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+
         .result-section {
             margin-top: 20px;
         }
@@ -405,6 +419,12 @@
                 <div id="protoList" class="proto-list">
                     <div class="loading">暂无已加载的类型</div>
                 </div>
+
+                <div class="pagination-controls" id="paginationControls" style="display: none; margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
+                    <button type="button" class="btn btn-sm btn-secondary" id="prevPageBtn" disabled>上一页</button>
+                    <span id="pageInfo">第 1/1 页，每页 50 条</span>
+                    <button type="button" class="btn btn-sm btn-secondary" id="nextPageBtn" disabled>下一页</button>
+                </div>
             </div>
         </div>
 
@@ -455,11 +475,21 @@
     <script>
         let currentEncoding = 'hex';
         let hasProtoc = true;
+        let paginationState = {
+            page: 1,
+            pageSize: 50,
+            total: 0,
+            totalPages: 0
+        };
 
-        async function loadProtoTypes() {
+        async function loadProtoTypes(page = 1) {
             try {
-                const response = await fetch('/api/proto/types');
+                const response = await fetch(`/api/proto/types?page=${page}&pageSize=${paginationState.pageSize}`);
                 const data = await response.json();
+
+                paginationState.page = data.page || 1;
+                paginationState.total = data.total || 0;
+                paginationState.totalPages = data.totalPages || 0;
 
                 const select = document.getElementById('protoType');
                 select.innerHTML = '<option value="">-- 选择 Proto 类型 --</option>';
@@ -483,8 +513,32 @@
                 } else {
                     listDiv.innerHTML = '<div class="loading">暂无已加载的类型，请上传 .proto 文件</div>';
                 }
+
+                updatePaginationControls();
             } catch (error) {
                 console.error('加载 proto 类型失败:', error);
+            }
+        }
+
+        function updatePaginationControls() {
+            const controls = document.getElementById('paginationControls');
+            const prevBtn = document.getElementById('prevPageBtn');
+            const nextBtn = document.getElementById('nextPageBtn');
+            const pageInfo = document.getElementById('pageInfo');
+
+            if (paginationState.totalPages > 0) {
+                controls.style.display = 'flex';
+                pageInfo.textContent = `第 ${paginationState.page}/${paginationState.totalPages} 页，每页 ${paginationState.pageSize} 条，共 ${paginationState.total} 条`;
+
+                prevBtn.disabled = paginationState.page <= 1;
+                nextBtn.disabled = paginationState.page >= paginationState.totalPages;
+            } else {
+                controls.style.display = paginationState.total > 0 ? 'flex' : 'none';
+                if (paginationState.total > 0) {
+                    pageInfo.textContent = `第 ${paginationState.page}/${paginationState.totalPages} 页，每页 ${paginationState.pageSize} 条，共 ${paginationState.total} 条`;
+                    prevBtn.disabled = paginationState.page <= 1;
+                    nextBtn.disabled = paginationState.page >= paginationState.totalPages;
+                }
             }
         }
 
@@ -560,7 +614,7 @@
                     statusDiv.innerHTML = `<div class="error">上传失败: ${result.error}</div>`;
                 } else {
                     statusDiv.innerHTML = `<div class="success">目录上传成功！加载了 ${result.types.length} 个类型</div>`;
-                    loadProtoTypes();
+                    loadProtoTypes(1);
                 }
             } catch (error) {
                 statusDiv.innerHTML = `<div class="error">上传失败: ${error.message}</div>`;
@@ -680,7 +734,7 @@
                 }
             }
 
-            loadProtoTypes();
+            loadProtoTypes(1);
         }
 
         async function deleteType(typeName) {
@@ -694,7 +748,7 @@
                 });
 
                 if (response.ok) {
-                    loadProtoTypes();
+                    loadProtoTypes(1);
                 } else {
                     alert('删除失败');
                 }
@@ -704,7 +758,19 @@
         }
 
         document.getElementById('refreshBtn').addEventListener('click', function() {
-            loadProtoTypes();
+            loadProtoTypes(1);
+        });
+
+        document.getElementById('prevPageBtn').addEventListener('click', function() {
+            if (paginationState.page > 1) {
+                loadProtoTypes(paginationState.page - 1);
+            }
+        });
+
+        document.getElementById('nextPageBtn').addEventListener('click', function() {
+            if (paginationState.page < paginationState.totalPages) {
+                loadProtoTypes(paginationState.page + 1);
+            }
         });
 
         document.querySelectorAll('.encoding-btn').forEach(btn => {
@@ -832,7 +898,7 @@
         }
 
         checkProtoc();
-        loadProtoTypes();
+        loadProtoTypes(1);
     </script>
 </body>
 </html>

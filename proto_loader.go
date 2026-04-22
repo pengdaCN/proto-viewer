@@ -474,7 +474,57 @@ func (p *ProtoRegistry) GetLoadedTypes() []string {
 		}
 		return true
 	})
+	sort.Strings(types)
 	return types
+}
+
+type PaginatedTypes struct {
+	Types      []string
+	Total      int
+	Page       int
+	PageSize   int
+	TotalPages int
+}
+
+func (p *ProtoRegistry) GetLoadedTypesPaginated(page, pageSize int) (*PaginatedTypes, error) {
+	allTypes := p.GetLoadedTypes()
+	total := len(allTypes)
+
+	if total == 0 {
+		return &PaginatedTypes{
+			Types:      []string{},
+			Total:      0,
+			Page:       page,
+			PageSize:   pageSize,
+			TotalPages: 0,
+		}, nil
+	}
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 50
+	}
+
+	totalPages := (total + pageSize - 1) / pageSize
+	if page > totalPages {
+		page = totalPages
+	}
+
+	start := (page - 1) * pageSize
+	end := start + pageSize
+	if end > total {
+		end = total
+	}
+
+	return &PaginatedTypes{
+		Types:      allTypes[start:end],
+		Total:      total,
+		Page:       page,
+		PageSize:   pageSize,
+		TotalPages: totalPages,
+	}, nil
 }
 
 func (p *ProtoRegistry) UnloadByName(typeName string) error {
