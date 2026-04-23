@@ -1,0 +1,25 @@
+curl 'https://console.mpcvault.com/admin/mpcvault.internal.admin.v1.AdminService/CheckCredential' \
+  -H 'accept: */*' \
+  -H 'accept-language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6' \
+  -H 'browser-id: OTU1MmQ1YTk5ODJiMzJkY2YwNmIwMjc2Yjg1MzM3ZmI=' \
+  -H 'cache-control: no-cache' \
+  -H 'content-type: application/grpc-web+proto' \
+  -b '_ga=GA1.1.421210343.1776872154; __stripe_mid=f314eeba-e719-47a4-9acd-6c36bdb662cbd09279; intercom-device-id-ro935vnz=2f56bd5e-032e-4c0d-be74-82f0aad3b133; __stripe_sid=2ec063a3-18eb-4395-be7d-af71649c724f0f8896; _ga_QZ9REJ1JCH=GS2.1.s1776951501$o2$g0$t1776951501$j60$l0$h0; intercom-id-ro935vnz=f8650762-eb89-4d7f-bde2-3a297432bf36; browser-id-non-sticky=NWQ2YTJjZDRkMGE3MTEyMDAzOGJmMDY2ZjUxZDI5ODk=; g_state={"i_l":0,"i_ll":1776951753207}; token=IpoZSlJSoXWWIfpUpUNxUpBEFs1EHvKapegsxhi4WQ884q0AUauP7nLqMhgfgM1OmN7PpM5RMrYLQ4lFQLGXgZDWF1UZ4vZfM82ScQHcJYtZOKuOSsV9S8uRL+O5yag3G+G12h0Fxa8qBla0FG9gWPPTsvAf4ryh+kNyl50YcB4=; _ga_LFC0601V7N=GS2.1.s1776951369$o2$g1$t1776951867$j56$l0$h0; intercom-session-ro935vnz=M28vd2daS0pQTjlLblNBam9UTzQrbm9tRkdjVnV1dUkwb2xRdWFidG5aU2ZLNkxvMWhGekgxK2NCS05Hem9FUWtNWElwRjZ1dFBaalRubDNoTVpocU54TlkzdEF2N1lIVExsMzJpS3ZsVGZ0QVozWWh6ZVZBUXg0MHQrZ1ZMOWFWYndqckJHOWlOT0NBUzl3SUIwMGVDWFZzbzl2c3g5VXRVT1N2RHhOV1V0blk2aXZpZ0ZwRklsTFh6OWpMYm53M0FGdTlUQ0ZqeTFPdlNrTW5mUEVxWWhhczBTanUwbWpIV2Nvd1NucmtEUWZPS2w4cHE5V1YzNmk1RkdSNmtaelRDSzcyMVZLY1hETFBxMXBJSkVBQ29PN2FpNk9zSFJldkVPeEpNWmFmV2s9LS1GQ0FBSXByY1gyUjdxbDNwTXNkSHBBPT0=--6caa1a5ebfefef0d9f2f207293d5ddab57e25a0d' \
+  -H 'dnt: 1' \
+  -H 'origin: https://console.mpcvault.com' \
+  -H 'platform: WEB' \
+  -H 'pragma: no-cache' \
+  -H 'priority: u=1, i' \
+  -H 'referer: https://console.mpcvault.com/dashboard/signing-request?id=6c93db32-a424-4c17-9002-7f7d3666fefb' \
+  -H 'sec-ch-ua: "Microsoft Edge";v="147", "Not.A/Brand";v="8", "Chromium";v="147"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "Windows"' \
+  -H 'sec-fetch-dest: empty' \
+  -H 'sec-fetch-mode: cors' \
+  -H 'sec-fetch-site: same-origin' \
+  -H 'token: IpoZSlJSoXWWIfpUpUNxUpBEFs1EHvKapegsxhi4WQ884q0AUauP7nLqMhgfgM1OmN7PpM5RMrYLQ4lFQLGXgZDWF1UZ4vZfM82ScQHcJYtZOKuOSsV9S8uRL+O5yag3G+G12h0Fxa8qBla0FG9gWPPTsvAf4ryh+kNyl50YcB4=' \
+  -H 'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36 Edg/147.0.0.0' \
+  -H 'x-device-attest: eyJraWQiOiJrMnhhbUEiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIxOjg0NTE2MDAwNTE0NTp3ZWI6YWIzNTExYzAzNWQ5MzA5MjlhMzQ4OCIsImF1ZCI6WyJwcm9qZWN0cy84NDUxNjAwMDUxNDUiLCJwcm9qZWN0cy9tcGN2YXVsdCJdLCJwcm92aWRlciI6InJlY2FwdGNoYV92MyIsImlzcyI6Imh0dHBzOi8vZmlyZWJhc2VhcHBjaGVjay5nb29nbGVhcGlzLmNvbS84NDUxNjAwMDUxNDUiLCJleHAiOjE3NzY5NTUxNDAsImlhdCI6MTc3Njk1MTU0MCwianRpIjoiWkJEWHJVdllFai1aQTNULVMwdnliTnl4c1pJNmxabEVEVmhzMk9qM2x1ayJ9.wzoOSs_9TVQxfeQw79oSC0DDFWzd-q0TfRzzUw92o30xBcb2VhA4wbvS5TJDCUL7kPlg3dfCFyGPi2sCr4-5OsJeyNxd6jcN0oMg1bxwNAv0JqoE9drUA9G6qaEWlYRUUlczsuDL0VXtonqPXQk569R0oKo7YDxXDXVOaA4NvKpKd8ZAWNgp1PksNmZn2sryqwlfGiOGgo18GYjJOA-bBa2xFaZr2_UstrfDViMMIhAufaP_MRAPCGNq9xdgmZ1WWD26wQStXAAx29WpiyfH7cNwLebNur5aU6soDpiQsiqQN14dujYs__JLaSY-IwLEq5Uxb3YzQREVRnY1biFvm-XThKZEanfOdhkPrJhqD3NkmMzZ6H12z_ya2YPWHlY4tDbj_hxim5oECgwljNMvjOB6xiP31HQPU6TBPHLsYQ_609wXxnj5zPHvdjiPo1PH5Utu-sob8uXp00IIuinJ_6GFGUvLGZq9T4rZUrxpX7uAJTau6iId2b4Jz98VmB9C' \
+  -H 'x-grpc-web: 1' \
+  -H 'x-request-id: 19dba9cf-8230-4000-8588-1fa12ed64f00' \
+  --data-raw $'\u0000\u0000\u0000\u0000\u0000'

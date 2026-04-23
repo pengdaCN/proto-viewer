@@ -498,7 +498,18 @@
                     <button type="button" class="encoding-btn active" data-encoding="hex">HEX</button>
                     <button type="button" class="encoding-btn" data-encoding="base64">Base64</button>
                 </div>
-                <textarea id="binaryInput" placeholder="输入 hex 或 base64 编码的二进制数据..."></textarea>
+                <textarea id="binaryInput" placeholder="输入 hex、base64 编码的二进制数据，或粘贴 curl 命令..." style="margin-top: 10px;"></textarea>
+                <div id="detectedTypeLabel" style="display: none; font-size: 13px; margin-top: 5px;"></div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center; flex-wrap: wrap;">
+                <button type="button" class="btn btn-sm btn-secondary" id="clearInputBtn">清空输入</button>
+                <button type="button" class="btn btn-sm btn-danger" id="clearAllBtn">全部清空</button>
+                <label style="font-size: 13px; cursor: pointer; margin-left: 10px;">
+                    <input type="checkbox" id="autoFillPathCheckbox" checked style="margin-right: 5px;">
+                    自动填充路径到搜索框
+                </label>
+                <span id="detectedTypeLabel" style="display: none; font-size: 13px; color: #666; margin-left: 20px;"></span>
             </div>
 
             <button type="button" class="btn btn-primary" id="decodeBtn">解码</button>
@@ -522,12 +533,130 @@
     <script>
         let currentEncoding = 'hex';
         let hasProtoc = true;
+        let detectedEncoding = null;
         let paginationState = {
             page: 1,
             pageSize: 10,
             total: 0,
             totalPages: 0
         };
+
+        function detectEncoding(input) {
+            const trimmed = input.trim();
+            if (trimmed.startsWith('curl ')) {
+                return 'curl-raw';
+            }
+            const hexPattern = /^[0-9a-fA-F]+$/;
+            if (hexPattern.test(trimmed) && trimmed.length % 2 === 0 && trimmed.length > 0) {
+                return 'hex';
+            }
+            const base64Pattern = /^[A-Za-z0-9+/=]+$/;
+            if (base64Pattern.test(trimmed) && trimmed.length % 4 === 0 && trimmed.length > 0) {
+                return 'base64';
+            }
+            return null;
+        }
+
+        function parseCurlRaw(input) {
+            const trimmed = input.trim();
+            if (!trimmed.startsWith('curl ')) {
+                return { data: null, url: null, error: 'Not a curl command' };
+            }
+            let dataValue = null;
+            const dataRawMatch = trimmed.match(/--data-raw\s+(?:'([^']*)'|"([^"]*)"|(\S+))/);
+            if (dataRawMatch) {
+                dataValue = dataRawMatch[1] || dataRawMatch[2] || dataRawMatch[3];
+            } else {
+                const dataMatch = trimmed.match(/--data\s+(?:'([^']*)'|"([^"]*)"|(\S+))/);
+                if (dataMatch) {
+                    dataValue = dataMatch[1] || dataMatch[2] || dataMatch[3];
+                } else {
+                    const dMatch = trimmed.match(/-d\s+(?:'([^']*)'|"([^"]*)"|(\S+))/);
+                    if (dMatch) {
+                        dataValue = dMatch[1] || dMatch[2] || dMatch[3];
+                    }
+                }
+            }
+            if (!dataValue) {
+                return { data: null, url: null, error: 'No data found in curl command' };
+            }
+            const dataBytes = decodeUnicodeEscapes(dataValue);
+            const urlMatch = trimmed.match(/curl\s+'([^']+)'/);
+            const url = urlMatch ? urlMatch[1] : null;
+            return { data: dataBytes, url: url, error: null };
+        }
+
+        function decodeUnicodeEscapes(str) {
+            const bytes = [];
+            const escapeSequences = {
+                'n': 0x0a,
+                'r': 0x0d,
+                't': 0x09,
+                '\\': 0x5c,
+                "'": 0x27,
+                '"': 0x22,
+            };
+            let i = 0;
+
+            while (i < str.length) {
+                if (str[i] === '\\' && i + 1 < str.length) {
+                    const nextChar = str[i + 1];
+                    if (nextChar === 'u' && i + 5 < str.length) {
+                        const hex = str.substring(i + 2, i + 6);
+                        if (/^[0-9a-fA-F]{4}$/.test(hex)) {
+                            bytes.push(parseInt(hex, 16));
+                            i += 6;
+                            continue;
+                        }
+                    } else if (escapeSequences.hasOwnProperty(nextChar)) {
+                        bytes.push(escapeSequences[nextChar]);
+                        i += 2;
+                        continue;
+                    }
+                }
+                bytes.push(str.charCodeAt(i));
+                i++;
+            }
+
+            return new Uint8Array(bytes);
+        }
+
+        function skipGrpcWebFrame(data) {
+            if (data.length < 5) {
+                return data;
+            }
+            const FRAME_HEADER = new Uint8Array([0x00, 0x00, 0x00, 0x00, 0x00]);
+            let isGrpcWebFrame = true;
+            for (let i = 0; i < 5; i++) {
+                if (data[i] !== FRAME_HEADER[i]) {
+                    isGrpcWebFrame = false;
+                    break;
+                }
+            }
+            return isGrpcWebFrame ? data.slice(5) : data;
+        }
+
+        function extractPathLastSegment(url) {
+            if (!url) return null;
+            try {
+                const urlObj = new URL(url);
+                const path = urlObj.pathname;
+                const segments = path.split('/').filter(s => s.length > 0);
+                return segments.length > 0 ? segments[segments.length - 1] : null;
+            } catch {
+                const match = url.match(/\/([^\/\?]+)\/?$/);
+                return match ? match[1] : null;
+            }
+        }
+
+        function arrayBufferToBase64(buffer) {
+            const bytes = new Uint8Array(buffer);
+            let binary = '';
+            for (let i = 0; i < bytes.length; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return btoa(binary);
+        }
 
         async function loadProtoTypes(page = 1, search = '') {
             try {
@@ -917,6 +1046,49 @@
                 return;
             }
 
+            let processedData = data;
+            let encoding = currentEncoding;
+
+            detectedEncoding = detectEncoding(data);
+            if (detectedEncoding === 'curl-raw') {
+                const parseResult = parseCurlRaw(data);
+                if (parseResult.error) {
+                    showError('curl-raw 解析失败: ' + parseResult.error);
+                    return;
+                }
+                let binaryData = parseResult.data;
+                processedData = arrayBufferToBase64(binaryData);
+                encoding = 'base64';
+                const autoFillCheckbox = document.getElementById('autoFillPathCheckbox');
+                if (autoFillCheckbox.checked) {
+                    const pathSegment = extractPathLastSegment(parseResult.url);
+                    if (pathSegment) {
+                        const protoTypeInput = document.getElementById('protoType');
+                        protoTypeInput.value = pathSegment;
+                        protoTypeInput.focus();
+                        const searchText = pathSegment.trim();
+                        clearTimeout(searchDebounceTimer);
+                        searchDebounceTimer = setTimeout(() => {
+                            loadProtoTypes(1, searchText);
+                        }, 300);
+                    }
+                }
+            } else if (detectedEncoding === null) {
+                const label = document.getElementById('detectedTypeLabel');
+                label.textContent = '⚠️ 无法自动识别格式，请手动选择 hex 或 base64';
+                label.style.display = 'block';
+                label.style.color = '#dc3545';
+                setTimeout(() => { label.style.display = 'none'; }, 3000);
+                showError('无法自动识别数据类型，请手动选择 hex 或 base64');
+                return;
+            } else {
+                const label = document.getElementById('detectedTypeLabel');
+                label.textContent = '✓ 已自动识别为: ' + detectedEncoding.toUpperCase();
+                label.style.display = 'block';
+                label.style.color = '#28a745';
+                setTimeout(() => { label.style.display = 'none'; }, 2000);
+            }
+
             try {
                 const response = await fetch('/api/proto/decode', {
                     method: 'POST',
@@ -924,9 +1096,9 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        data: data,
+                        data: processedData,
                         type: type,
-                        encoding: currentEncoding
+                        encoding: encoding
                     })
                 });
 
@@ -941,6 +1113,24 @@
             } catch (error) {
                 showError('请求失败: ' + error.message);
             }
+        });
+
+        document.getElementById('clearInputBtn').addEventListener('click', function() {
+            document.getElementById('binaryInput').value = '';
+        });
+
+        document.getElementById('clearAllBtn').addEventListener('click', function() {
+            document.getElementById('binaryInput').value = '';
+            document.getElementById('protoType').value = '';
+            document.getElementById('jsonResult').innerHTML = '';
+            document.getElementById('resultSection').style.display = 'none';
+            document.getElementById('errorSection').style.display = 'none';
+            document.querySelectorAll('.encoding-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('.encoding-btn[data-encoding="hex"]').classList.add('active');
+            currentEncoding = 'hex';
+        });
+
+        document.getElementById('autoFillPathCheckbox').addEventListener('change', function() {
         });
 
         document.getElementById('copyBtn').addEventListener('click', async function() {
@@ -1019,6 +1209,33 @@
         checkProtoc();
         initCombobox();
         loadProtoTypes(1);
+
+        document.getElementById('binaryInput').addEventListener('blur', function() {
+            const data = this.value.trim();
+            if (!data) {
+                document.getElementById('detectedTypeLabel').style.display = 'none';
+                return;
+            }
+            const detected = detectEncoding(data);
+            const label = document.getElementById('detectedTypeLabel');
+            if (detected === 'curl-raw') {
+                label.textContent = '✓ 已自动识别为 curl-raw';
+                label.style.display = 'inline';
+                label.style.color = '#28a745';
+            } else if (detected === 'hex') {
+                label.textContent = '✓ 已自动识别为 HEX';
+                label.style.display = 'inline';
+                label.style.color = '#28a745';
+            } else if (detected === 'base64') {
+                label.textContent = '✓ 已自动识别为 BASE64';
+                label.style.display = 'inline';
+                label.style.color = '#28a745';
+            } else {
+                label.textContent = '⚠️ 无法自动识别格式';
+                label.style.display = 'inline';
+                label.style.color = '#dc3545';
+            }
+        });
     </script>
 </body>
 </html>
