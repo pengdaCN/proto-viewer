@@ -3,6 +3,8 @@ package main
 import (
 	"archive/tar"
 	"bufio"
+	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -616,6 +618,44 @@ func (p *ProtoRegistry) rebuildRegistryLocked() ([]string, error) {
 	return types, nil
 }
 
+func extractGrpcWebPayload(data []byte) ([]byte, error) {
+	var result []byte
+	offset := 0
+	hasDataFrame := false
+
+	for offset < len(data) {
+		if offset+5 > len(data) {
+			break
+		}
+
+		flags := data[offset]
+		length := binary.BigEndian.Uint32(data[offset+1 : offset+5])
+		payloadStart := offset + 5
+		payloadEnd := payloadStart + int(length)
+
+		if payloadEnd > len(data) {
+			break
+		}
+
+		if flags&0x01 != 0 {
+			return nil, errors.New("不支持压缩的 gRPC-Web 数据")
+		}
+
+		if flags&0x80 == 0 {
+			hasDataFrame = true
+			result = append(result, data[payloadStart:payloadEnd]...)
+		}
+
+		offset = payloadEnd
+	}
+
+	if !hasDataFrame {
+		return nil, errors.New("未找到有效的 gRPC-Web DATA 帧")
+	}
+
+	return result, nil
+}
+
 func (p *ProtoRegistry) Decode(data []byte, typeName string) (string, error) {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
@@ -628,13 +668,13 @@ func (p *ProtoRegistry) Decode(data []byte, typeName string) (string, error) {
 	dynMsg := dynamicpb.NewMessage(msgType.Descriptor())
 
 	if err := proto.Unmarshal(data, dynMsg); err != nil {
-		if len(data) > 5 {
-			dynMsg = dynamicpb.NewMessage(msgType.Descriptor())
-			if err2 := proto.Unmarshal(data[5:], dynMsg); err2 != nil {
-				return "", fmt.Errorf("反序列化失败: %v (原始数据) -> %v (grpc-web帧)", err, err2)
-			}
-		} else {
-			return "", fmt.Errorf("反序列化失败: %v", err)
+		grpcPayload, grpcErr := extractGrpcWebPayload(data)
+		if grpcErr != nil {
+			return "", fmt.Errorf("反序列化失败: %v (原始数据) -> %v (gRPC-Web解析: %v)", err, grpcErr, grpcErr)
+		}
+		dynMsg = dynamicpb.NewMessage(msgType.Descriptor())
+		if err2 := proto.Unmarshal(grpcPayload, dynMsg); err2 != nil {
+			return "", fmt.Errorf("反序列化失败: %v (原始数据) -> %v (gRPC-Web解析后) -> %v", err, grpcErr, err2)
 		}
 	}
 
